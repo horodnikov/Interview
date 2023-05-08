@@ -6,8 +6,6 @@ import multiprocessing
 
 
 class OnMyWatch:
-    # watchDirectory = "./payments"
-
     def __init__(self):
         self.observer = Observer()
 
@@ -26,7 +24,6 @@ class OnMyWatch:
 
 
 class Handler(FileSystemEventHandler):
-
     @staticmethod
     def on_any_event(event):
         if event.is_directory:
@@ -43,11 +40,18 @@ class Handler(FileSystemEventHandler):
             print("Watchdog received deleted event - % s." % event.src_path)
 
 
+def run_on_my_watch(watch_directory):
+    watch = OnMyWatch()
+    watch.run(watch_directory)
+
+
 if __name__ == '__main__':
     path_payments = "./payments"
     path_bets = "./bets"
-    watch = OnMyWatch()
-    m1 = multiprocessing.Process(target=OnMyWatch.run, args=(path_payments,))
-    m2 = multiprocessing.Process(target=OnMyWatch.run, args=(path_bets,))
+    m1 = multiprocessing.Process(target=run_on_my_watch, args=(path_payments,))
+    m2 = multiprocessing.Process(target=run_on_my_watch, args=(path_bets,))
     m1.start()
     m2.start()
+
+    m1.join()  # Wait for process m1 to finish
+    m2.join()  # Wait for process m2 to finish

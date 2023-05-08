@@ -99,7 +99,8 @@ def run():
         bets['payout'].tolist(),
         ))
 
-    sorted_bets = list(sorted(list(map(list, clients)), key=lambda x: (x[0], x[1])))
+    sorted_bets = list(
+        sorted(list(map(list, clients)), key=lambda x: (x[0], x[1])))
     df_bets = pd.DataFrame(rank_data(sorted_bets), columns=[
         'player_id',
         'accept_time',
