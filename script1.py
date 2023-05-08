@@ -2,7 +2,7 @@ import time
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 import script2
-import multiprocessing
+import threading
 
 
 class OnMyWatch:
@@ -14,7 +14,7 @@ class OnMyWatch:
         self.observer.schedule(event_handler, watch_directory, recursive=True)
         self.observer.start()
         try:
-            while True:
+            while not stop_event.is_set():  # Check the event state
                 time.sleep(5)
         except KeyboardInterrupt:
             self.observer.stop()
@@ -24,34 +24,43 @@ class OnMyWatch:
 
 
 class Handler(FileSystemEventHandler):
-    @staticmethod
-    def on_any_event(event):
+    def on_any_event(self, event):
         if event.is_directory:
             return None
 
-        elif event.event_type == 'created':
+        t = threading.Thread(target=self.process_event, args=(event,))
+        t.start()
+
+    @staticmethod
+    def process_event(event):
+        global stop_event
+        if event.event_type == 'created':
             script2.run()
             print("Watchdog received created event - % s." % event.src_path)
+            stop_event.set()  # Set the event
         elif event.event_type == 'modified':
             script2.run()
             print("Watchdog received modified event - % s." % event.src_path)
+            stop_event.set()  # Set the event
         elif event.event_type == 'deleted':
             script2.run()
             print("Watchdog received deleted event - % s." % event.src_path)
-
-
-def run_on_my_watch(watch_directory):
-    watch = OnMyWatch()
-    watch.run(watch_directory)
+            stop_event.set()  # Set the event
 
 
 if __name__ == '__main__':
     path_payments = "./payments"
     path_bets = "./bets"
-    m1 = multiprocessing.Process(target=run_on_my_watch, args=(path_payments,))
-    m2 = multiprocessing.Process(target=run_on_my_watch, args=(path_bets,))
-    m1.start()
-    m2.start()
+    watch_payments = OnMyWatch()
+    watch_bets = OnMyWatch()
 
-    m1.join()  # Wait for process m1 to finish
-    m2.join()  # Wait for process m2 to finish
+    stop_event = threading.Event()  # Create a global event object
+
+    t1 = threading.Thread(target=watch_payments.run, args=(path_payments,))
+    t2 = threading.Thread(target=watch_bets.run, args=(path_bets,))
+
+    t1.start()
+    t2.start()
+
+    t1.join()
+    t2.join()

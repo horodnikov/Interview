@@ -87,7 +87,9 @@ def run():
 
     create_directory('result')
     dt_string = datetime.now().strftime("%S%M%H%d%m%Y")
-    result.to_csv(f'result/result{dt_string}.csv')
+    with open(f'result/result{dt_string}.csv', 'w', newline='') as f:
+        result.to_csv(f, index=False)
+        f.flush()
 
     bets = frames[1]
     bets = bets.reset_index(drop=True)
@@ -108,4 +110,6 @@ def run():
         'payout',
         'rank_numb'])
     df_wins = df_bets[(df_bets['rank_numb'] >= 5)]
-    df_wins.to_csv(f'result/bets_result{dt_string}.csv')
+    with open(f'result/bets_result{dt_string}.csv', 'w', newline='') as f:
+        df_wins.to_csv(f, index=False)
+        f.flush()
