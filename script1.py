@@ -1,50 +1,53 @@
-import sys
 import time
-import logging
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
+import script2
+import multiprocessing
 
 
-def on_created(event):
-    exec(open("script2.py").read())
-    print("created")
+class OnMyWatch:
+    # watchDirectory = "./payments"
+
+    def __init__(self):
+        self.observer = Observer()
+
+    def run(self, watch_directory):
+        event_handler = Handler()
+        self.observer.schedule(event_handler, watch_directory, recursive=True)
+        self.observer.start()
+        try:
+            while True:
+                time.sleep(5)
+        except KeyboardInterrupt:
+            self.observer.stop()
+            print("Observer Stopped")
+
+        self.observer.join()
 
 
-def on_deleted(event):
-    exec(open("script2.py").read())
-    print("deleted")
+class Handler(FileSystemEventHandler):
+
+    @staticmethod
+    def on_any_event(event):
+        if event.is_directory:
+            return None
+
+        elif event.event_type == 'created':
+            script2.run()
+            print("Watchdog received created event - % s." % event.src_path)
+        elif event.event_type == 'modified':
+            script2.run()
+            print("Watchdog received modified event - % s." % event.src_path)
+        elif event.event_type == 'deleted':
+            script2.run()
+            print("Watchdog received deleted event - % s." % event.src_path)
 
 
-def on_modified(event):
-    print("modified")
-
-
-def on_moved(event):
-    print("moved")
-
-
-if __name__ == "__main__":
-    event_handler = FileSystemEventHandler()
-    event_handler.on_created = on_created
-    event_handler.on_deleted = on_deleted
-    event_handler.on_modified = on_modified
-    event_handler.on_moved = on_moved
-
+if __name__ == '__main__':
     path_payments = "./payments"
     path_bets = "./bets"
-    observer_1 = Observer()
-    observer_1.schedule(event_handler, path_payments, recursive=True)
-    observer_1.start()
-    observer_2 = Observer()
-    observer_2.schedule(event_handler, path_bets, recursive=True)
-    observer_2.start()
-
-    try:
-        print("Monitoring")
-        while True:
-            time.sleep(1)
-    finally:
-        observer_1.stop()
-        observer_2.stop()
-        observer_1.join()
-        observer_2.join()
+    watch = OnMyWatch()
+    m1 = multiprocessing.Process(target=OnMyWatch.run, args=(path_payments,))
+    m2 = multiprocessing.Process(target=OnMyWatch.run, args=(path_bets,))
+    m1.start()
+    m2.start()
